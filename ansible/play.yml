@@ -1,0 +1,41 @@
+---
+
+- name: Setup the HelloFresh development box
+  hosts: all
+  user: vagrant
+  vars:
+    docker_host: "tcp://0.0.0.0:4243"
+  environment:
+    DOCKER_HOST: "{{ docker_host }}"
+
+  # Install git and docker
+  roles:
+    # git
+    - role: geerlingguy.git
+      sudo: yes
+
+    # docker
+    - role: candeias.docker
+      become: yes
+
+  # Run after roles
+  post_tasks:
+    # This only becomes effective after a new login, so it's not available
+    # for the duration of this provisioning run. Therefore we still use
+    # the `environment` statement, above.
+    - name: Set DOCKER_HOST
+      become: yes
+      register: set_docker_host
+      lineinfile: "dest=/etc/environment state=present regexp='^DOCKER_HOST' line='DOCKER_HOST={{ docker_host }}'"
+
+    # Install utilities
+    - name: Install utilities
+      apt: name={{ item }} state=installed update_cache=yes
+      with_items:
+        - language-pack-en
+      sudo: yes
+
+    # Cleanup after ourselves
+    - name: Apt Cleanup
+      shell: apt-get clean
+      sudo: yes
